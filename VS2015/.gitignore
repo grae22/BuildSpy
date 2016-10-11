@@ -1,0 +1,5 @@
+# VS files
+*.suo
+*.vc.db
+*.vc.opendb
+*.vcxproj.user
