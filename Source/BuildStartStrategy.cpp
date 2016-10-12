@@ -21,13 +21,9 @@ BuildStartStrategy::~BuildStartStrategy()
 
 //-----------------------------------------------------------------------------
 
-void BuildStartStrategy::Execute(
-  const std::string& appPath,
-  const std::string& projectName )
+void BuildStartStrategy::Execute( const std::string& absProjectLogFilename )
 {
-  const string filename( appPath + projectName );
-
-  auto log = make_unique< ProjectLog >( filename );
+  auto log = make_unique< ProjectLog >( absProjectLogFilename );
 
   log->AddEntry( "build_start" );
 }

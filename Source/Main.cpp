@@ -60,6 +60,9 @@ int main( int argc, char* argv[] )
 
   LOG_INFO( "Project: " + projectName );
 
+  // Project log filename.
+  const string absProjectLogFilename( buildSpyPath + projectName + ".buildspy.prj.log" );
+
   // Build started/ended.
   const char mode = argv[ 2 ][ 0 ];
   unique_ptr< IBuildStrategy > buildStrategy = nullptr;
@@ -85,7 +88,7 @@ int main( int argc, char* argv[] )
   {
     try
     {
-      buildStrategy->Execute( buildSpyPath, projectName );
+      buildStrategy->Execute( absProjectLogFilename );
     }
     catch( exception* ex )
     {

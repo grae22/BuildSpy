@@ -11,9 +11,7 @@ public:
   BuildStartStrategy();
   virtual ~BuildStartStrategy();
 
-  virtual void Execute(
-    const std::string& appPath,
-    const std::string& projectName ) override;
+  virtual void Execute( const std::string& absProjectLogFilename ) override;
 };
 
 //-----------------------------------------------------------------------------

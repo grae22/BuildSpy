@@ -10,9 +10,7 @@ class IBuildStrategy
 public:
   virtual ~IBuildStrategy() { }
 
-  virtual void Execute(
-    const std::string& appPath,
-    const std::string& projectName ) = 0;
+  virtual void Execute( const std::string& absProjectLogFilename ) = 0;
 };
 
 //-----------------------------------------------------------------------------
