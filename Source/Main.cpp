@@ -4,6 +4,8 @@
 #include <boost/filesystem.hpp>
 #include <string>
 
+#include "BuildStartStrategy.h"
+
 //-----------------------------------------------------------------------------
 
 using namespace std;
@@ -59,10 +61,13 @@ int main( int argc, char* argv[] )
 
   // Build started/ended.
   const char mode = argv[ 2 ][ 0 ];
+  unique_ptr< BuildStartStrategy > buildStrategy = nullptr;
 
   if( mode == '0' )
   {
     LOG_INFO( "Mode: Build started." );
+
+    buildStrategy = make_unique< BuildStartStrategy >();
   }
   else if( mode == '1' )
   {
@@ -73,6 +78,12 @@ int main( int argc, char* argv[] )
     LOG_ERR( "Unknown mode specified." );
   }
 
+  if( buildStrategy != nullptr )
+  {
+    buildStrategy->Execute( buildSpyPath, projectName );
+  }
+
+  // Closing.
   LOG_INFO( "Bye." );
 
   return 0;
