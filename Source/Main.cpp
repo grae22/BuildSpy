@@ -5,6 +5,7 @@
 #include <boost/log/trivial.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/asio/ip/host_name.hpp>
 #include <string>
 
 //-----------------------------------------------------------------------------
@@ -25,9 +26,16 @@ namespace loggingKeywords = boost::log::keywords;
 
 //-----------------------------------------------------------------------------
 
+// Constants.
+
+const string c_projectLogExt( ".buildspy-prj-log" );
+
+//-----------------------------------------------------------------------------
+
 // Function prototypes.
 
 void InitLog();
+void CopyLogsToServer( const string& appPath, const string& serverPath );
 
 //-----------------------------------------------------------------------------
 
@@ -35,13 +43,14 @@ void InitLog();
 // 0: Executable path.
 // 1: Project name.
 // 2: Build started (0) or ended (1).
+// 3: Server path to copy logs to.
 
 int main( int argc, char* argv[] )
 {
   InitLog();
 
   // Not enough args?
-  if( argc < 3 )
+  if( argc < 4 )
   {
     LOG_ERR( "Called with too few arguments." );
     return 1;
@@ -61,7 +70,10 @@ int main( int argc, char* argv[] )
   LOG_INFO( "Project: " + projectName );
 
   // Project log filename.
-  const string absProjectLogFilename( buildSpyPath + projectName + ".buildspy.prj.log" );
+  const string absProjectLogFilename( buildSpyPath + projectName + c_projectLogExt );
+
+  // Server path.
+  const string serverPath( argv[ 3 ] );
 
   // Build started/ended.
   const char mode = argv[ 2 ][ 0 ];
@@ -96,6 +108,9 @@ int main( int argc, char* argv[] )
     }
   }
 
+  // Copy logs to server.
+  CopyLogsToServer( buildSpyPath, serverPath );
+
   // Closing.
   LOG_INFO( "Bye." );
 
@@ -111,10 +126,62 @@ void InitLog()
   logging::add_file_log
   (
     loggingKeywords::file_name = "buildspy.log",
-    loggingKeywords::format = "[%TimeStamp%] %Message%"
+    loggingKeywords::format = "[%TimeStamp%] %Message%",
+    loggingKeywords::open_mode = ios_base::app
   );
 
   LOG_INFO( "Log initialised." );
+}
+
+//-----------------------------------------------------------------------------
+
+void CopyLogsToServer( const string& appPath, const string& serverPath )
+{
+  try
+  {
+    LOG_INFO( "Attempting to copy logs..." );
+
+    // Server available?
+    if( fs::exists( serverPath ) == false )
+    {
+      LOG_ERR( string( "Server path not found: " ) + serverPath );
+      return;
+    }
+
+    // Copy each log to the server.
+    boost::system::error_code errorCode;
+    fs::directory_iterator endIt;
+
+    for( fs::directory_iterator it( appPath );
+         it != endIt;
+         ++it )
+    {
+      if( fs::is_regular_file( *it ) &&
+          it->path().extension() == c_projectLogExt )
+      {
+        const string logServerFilename(
+          serverPath +
+          boost::asio::ip::host_name() + "--" +
+          it->path().filename().string() );
+
+        LOG_INFO( "Attemping to copy to: " + logServerFilename );
+
+        fs::copy_file(
+          it->path(),
+          fs::path( logServerFilename ),
+          fs::copy_option::none,
+          errorCode );
+      }
+    }
+  }
+  catch( exception* ex )
+  {
+    LOG_ERR( ex->what() );
+  }
+  catch( exception& ex )
+  {
+    LOG_ERR( ex.what() );
+  }
 }
 
 //-----------------------------------------------------------------------------
