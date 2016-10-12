@@ -1,4 +1,4 @@
-#include "BuildStartStrategy.h"
+#include "BuildEndStrategy.h"
 #include "ProjectLog.h"
 
 #include <memory>
@@ -9,19 +9,19 @@ using namespace std;
 
 //-----------------------------------------------------------------------------
 
-BuildStartStrategy::BuildStartStrategy()
+BuildEndStrategy::BuildEndStrategy()
 {
 }
 
 //-----------------------------------------------------------------------------
 
-BuildStartStrategy::~BuildStartStrategy()
+BuildEndStrategy::~BuildEndStrategy()
 {
 }
 
 //-----------------------------------------------------------------------------
 
-void BuildStartStrategy::Execute(
+void BuildEndStrategy::Execute(
   const std::string& appPath,
   const std::string& projectName )
 {
@@ -29,7 +29,7 @@ void BuildStartStrategy::Execute(
 
   auto log = make_unique< ProjectLog >( filename );
 
-  log->AddEntry( "build_start" );
+  log->AddEntry( "build_end" );
 }
 
 //-----------------------------------------------------------------------------

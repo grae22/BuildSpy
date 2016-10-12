@@ -1,10 +1,11 @@
+#include "BuildStartStrategy.h"
+#include "BuildEndStrategy.h"
+
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/filesystem.hpp>
 #include <string>
-
-#include "BuildStartStrategy.h"
 
 //-----------------------------------------------------------------------------
 
@@ -61,7 +62,7 @@ int main( int argc, char* argv[] )
 
   // Build started/ended.
   const char mode = argv[ 2 ][ 0 ];
-  unique_ptr< BuildStartStrategy > buildStrategy = nullptr;
+  unique_ptr< IBuildStrategy > buildStrategy = nullptr;
 
   if( mode == '0' )
   {
@@ -72,6 +73,8 @@ int main( int argc, char* argv[] )
   else if( mode == '1' )
   {
     LOG_INFO( "Mode: Build ended." );
+
+    buildStrategy = make_unique< BuildEndStrategy >();
   }
   else
   {
@@ -80,7 +83,14 @@ int main( int argc, char* argv[] )
 
   if( buildStrategy != nullptr )
   {
-    buildStrategy->Execute( buildSpyPath, projectName );
+    try
+    {
+      buildStrategy->Execute( buildSpyPath, projectName );
+    }
+    catch( exception* ex )
+    {
+      LOG_ERR( string( "Failed to execute strategy: " ) + ex->what() );
+    }
   }
 
   // Closing.
