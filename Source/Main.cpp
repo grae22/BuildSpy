@@ -7,6 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
+#include <iomanip>
 
 //-----------------------------------------------------------------------------
 
@@ -28,13 +29,16 @@ namespace loggingKeywords = boost::log::keywords;
 
 // Constants.
 
+const boost::uintmax_t c_maxLogFileSize = 1024 * 1024;
 const string c_projectLogExt( ".buildspy-prj-log" );
+const boost::uintmax_t c_copyToServerLogSizeThreshold = 256;
+const string c_separator( "-+-" );
 
 //-----------------------------------------------------------------------------
 
 // Function prototypes.
 
-void InitLog();
+void InitLog( const string& absLogFilename );
 void CopyLogsToServer( const string& appPath, const string& serverPath );
 
 //-----------------------------------------------------------------------------
@@ -47,7 +51,20 @@ void CopyLogsToServer( const string& appPath, const string& serverPath );
 
 int main( int argc, char* argv[] )
 {
-  InitLog();
+  // Init the log file.
+  if( argc == 0 )
+  {
+    return 1;
+  }
+
+  fs::path execPath( fs::path( argv[ 0 ] ).parent_path() );
+  execPath += fs::path::preferred_separator;
+
+  const string buildSpyPath( execPath.string() );
+
+  InitLog( buildSpyPath + "Build-Spy.log" );
+
+  LOG_INFO( "BuildSpy path: " + buildSpyPath );
 
   // Not enough args?
   if( argc < 4 )
@@ -55,14 +72,6 @@ int main( int argc, char* argv[] )
     LOG_ERR( "Called with too few arguments." );
     return 1;
   }
-
-  // Executable path.
-  fs::path execPath( fs::path( argv[ 0 ] ).parent_path() );
-  execPath += fs::path::preferred_separator;
-
-  const string buildSpyPath( execPath.string() );
-
-  LOG_INFO( "BuildSpy path: " + buildSpyPath );
 
   // Project name.
   const string projectName( argv[ 1 ] );
@@ -119,13 +128,23 @@ int main( int argc, char* argv[] )
 
 //-----------------------------------------------------------------------------
 
-void InitLog()
+void InitLog( const string& absLogFilename )
 {
+  // Log too big?
+  fs::path logPathOb( absLogFilename );
+
+  if( fs::exists( logPathOb ) &&
+      fs::file_size( logPathOb ) > c_maxLogFileSize )
+  {
+    fs::remove( logPathOb );
+  }
+
+  // Initialise boost logging.
   logging::add_common_attributes();
 
   logging::add_file_log
   (
-    loggingKeywords::file_name = "buildspy.log",
+    loggingKeywords::file_name = absLogFilename,
     loggingKeywords::format = "[%TimeStamp%] %Message%",
     loggingKeywords::open_mode = ios_base::app
   );
@@ -135,7 +154,8 @@ void InitLog()
 
 //-----------------------------------------------------------------------------
 
-void CopyLogsToServer( const string& appPath, const string& serverPath )
+void CopyLogsToServer( const string& appPath,
+                       const string& serverPath )
 {
   try
   {
@@ -148,6 +168,12 @@ void CopyLogsToServer( const string& appPath, const string& serverPath )
       return;
     }
 
+    // Create timestamp.
+    time_t t = time( nullptr );
+    stringstream ss;
+    ss << put_time( localtime( &t ), "%Y%m%d%H%M%S" );
+    const string timestamp( ss.str() );
+
     // Copy each log to the server.
     boost::system::error_code errorCode;
     fs::directory_iterator endIt;
@@ -157,11 +183,15 @@ void CopyLogsToServer( const string& appPath, const string& serverPath )
          ++it )
     {
       if( fs::is_regular_file( *it ) &&
-          it->path().extension() == c_projectLogExt )
+          it->path().extension() == c_projectLogExt &&
+          fs::file_size( it->path() ) > c_copyToServerLogSizeThreshold )
       {
         const string logServerFilename(
           serverPath +
-          boost::asio::ip::host_name() + "--" +
+          timestamp +
+          c_separator +
+          boost::asio::ip::host_name() +
+          c_separator +
           it->path().filename().string() );
 
         LOG_INFO( "Attemping to copy to: " + logServerFilename );
@@ -171,6 +201,13 @@ void CopyLogsToServer( const string& appPath, const string& serverPath )
           fs::path( logServerFilename ),
           fs::copy_option::none,
           errorCode );
+
+        if( errorCode == 0 )
+        {
+          LOG_INFO( "Copied: " + logServerFilename );
+
+          fs::remove( it->path() );
+        }
       }
     }
   }
